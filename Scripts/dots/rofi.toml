@@ -4,6 +4,7 @@ pre_command = "echo 'Preserve rofi config'"
 
 [[rofi.dependency]]
 pacman = ["rofi"]
+dnf = ["rofi"]
 
 [[rofi.files]]
 action = "preserve"

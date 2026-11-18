@@ -88,3 +88,71 @@ paru = [
   "wlogout", # logout menu
 
 ]
+dnf = [
+  # System
+  "lua",
+  "luarocks",
+  "gobject-introspection-devel",
+  "uwsm",
+  "pipewire",
+  "pipewire-alsa",
+  "pipewire-pulseaudio",
+  "pipewire-jack-audio-connection-kit",
+  "pipewire-gstreamer",
+  "wireplumber",
+  "pavucontrol",
+  "pamixer",
+  "NetworkManager",
+  "network-manager-applet",
+  "bluez",
+  "blueman",
+  "brightnessctl",
+  "playerctl",
+  "udiskie",
+  # Display Manager
+  "sddm",
+  "qt5-qtquickcontrols",
+  "qt5-qtquickcontrols2",
+  "qt5-qtgraphicaleffects",
+  # Window Manager & Tools
+  "swww",
+  "grim",
+  "hyprpicker",
+  "slurp",
+  "satty",
+  "cliphist",
+  # Dependencies
+  "hyprpolkitagent",
+  "xdg-desktop-portal-hyprland",
+  "xdg-desktop-portal-gtk",
+  "xdg-user-dirs",
+  "parallel",
+  "jq",
+  "ImageMagick",
+  "qt5-qtimageformats",
+  "ffmpegthumbs",
+  "kde-cli-tools",
+  "libnotify",
+  "google-noto-emoji-fonts",
+  # Theming
+  "nwg-look",
+  "qt5ct",
+  "qt6ct",
+  "kvantum",
+  "qt5-qtwayland",
+  "qt6-qtwayland",
+  # Applications
+  "firefox",
+  "ark",
+  "unzip",
+  "nwg-displays",
+  "fzf",
+  "wlogout",
+  # Build tools for hyprland plugins & hyprquery
+  "cmake",
+  "gcc-c++",
+  "libxkbcommon-devel",
+  "hyprutils-devel",
+  "hyprlang-devel",
+]
+

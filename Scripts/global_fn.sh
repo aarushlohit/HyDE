@@ -21,10 +21,44 @@ export cacheDir
 export aurList
 export shlList
 
+detect_distro() {
+    if [ -f /etc/os-release ]; then
+        # shellcheck source=/dev/null
+        . /etc/os-release
+        echo "${ID:-unknown}"
+    else
+        echo "unknown"
+    fi
+}
+distro_id="$(detect_distro)"
+export distro_id
+
+detect_pkg_manager() {
+    if command -v dnf &>/dev/null && { [ "${distro_id}" = "fedora" ] || ! command -v pacman &>/dev/null; }; then
+        echo "dnf"
+    elif command -v pacman &>/dev/null; then
+        echo "pacman"
+    elif command -v apt &>/dev/null; then
+        echo "apt"
+    elif command -v zypper &>/dev/null; then
+        echo "zypper"
+    else
+        echo "unknown"
+    fi
+}
+pkg_manager="$(detect_pkg_manager)"
+export pkg_manager
+
 pkg_installed() {
     local PkgIn=$1
 
-    if pacman -Q "${PkgIn}" &>/dev/null; then
+    if command -v pacman &>/dev/null && pacman -Q "${PkgIn}" &>/dev/null; then
+        return 0
+    elif command -v rpm &>/dev/null && rpm -q "${PkgIn}" &>/dev/null; then
+        return 0
+    elif command -v "${PkgIn}" &>/dev/null; then
+        return 0
+    elif [ -x "${pacmanCmd}" ] && "${pacmanCmd}" pq "${PkgIn}" &>/dev/null; then
         return 0
     else
         return 1

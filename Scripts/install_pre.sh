@@ -21,12 +21,17 @@ flg_Nvidia=${flg_Nvidia:-1}
 setup_python_env || exit 1
 
 # grub
-if [ "${flg_Grub}" -eq 1 ] && pkg_installed grub && [ -f /boot/grub/grub.cfg ]; then
+grub_cfg="/boot/grub/grub.cfg"
+[ -f "/boot/grub2/grub.cfg" ] && grub_cfg="/boot/grub2/grub.cfg"
+grub_mkconfig="grub-mkconfig"
+command -v grub2-mkconfig &>/dev/null && grub_mkconfig="grub2-mkconfig"
+
+if [ "${flg_Grub}" -eq 1 ] && (pkg_installed grub || pkg_installed grub2-tools || pkg_installed grub2-common) && [ -f "${grub_cfg}" ]; then
     print_log -sec "bootloader" -b "detected :: " "grub..."
 
-    if [ ! -f /etc/default/grub.hyde.bkp ] && [ ! -f /boot/grub/grub.hyde.bkp ]; then
+    if [ ! -f /etc/default/grub.hyde.bkp ] && [ ! -f "${grub_cfg}.hyde.bkp" ]; then
         [ "${flg_DryRun}" -eq 1 ] || sudo cp /etc/default/grub /etc/default/grub.hyde.bkp
-        [ "${flg_DryRun}" -eq 1 ] || sudo cp /boot/grub/grub.cfg /boot/grub/grub.hyde.bkp
+        [ "${flg_DryRun}" -eq 1 ] || sudo cp "${grub_cfg}" "${grub_cfg}.hyde.bkp"
 
         # Only if the nvidia installation doesn't skip
         if nvidia_detect; then
@@ -60,7 +65,7 @@ if [ "${flg_Grub}" -eq 1 ] && pkg_installed grub && [ -f /boot/grub/grub.cfg ]; 
             /^GRUB_THEME=/c\GRUB_THEME=\"/usr/share/grub/themes/${grubtheme}/theme.txt\"
             /^#GRUB_THEME=/c\GRUB_THEME=\"/usr/share/grub/themes/${grubtheme}/theme.txt\"
             /^#GRUB_SAVEDEFAULT=true/c\GRUB_SAVEDEFAULT=true" /etc/default/grub
-            [ "${flg_DryRun}" -eq 1 ] || sudo grub-mkconfig -o /boot/grub/grub.cfg
+            [ "${flg_DryRun}" -eq 1 ] || sudo "${grub_mkconfig}" -o "${grub_cfg}"
         fi
 
     else
@@ -87,52 +92,62 @@ if pkg_installed systemd && nvidia_detect && [ "$(bootctl status 2>/dev/null | a
 fi
 
 # pacman
+if [ -f /etc/pacman.conf ]; then
+    if [ ! -f /etc/pacman.conf.hyde.bkp ]; then
+        print_log -g "[PACMAN] " -b "modify :: " "adding extra spice to pacman..."
 
-if [ -f /etc/pacman.conf ] && [ ! -f /etc/pacman.conf.hyde.bkp ]; then
-    print_log -g "[PACMAN] " -b "modify :: " "adding extra spice to pacman..."
+        # shellcheck disable=SC2154
+        [ "${flg_DryRun}" -eq 1 ] || sudo cp /etc/pacman.conf /etc/pacman.conf.hyde.bkp
+        [ "${flg_DryRun}" -eq 1 ] || sudo sed -i "/^#Color/c\Color\nILoveCandy
+        /^#VerbosePkgLists/c\VerbosePkgLists
+        /^#ParallelDownloads/c\ParallelDownloads = 5" /etc/pacman.conf
+        [ "${flg_DryRun}" -eq 1 ] || sudo sed -i '/^#\[multilib\]/,+1 s/^#//' /etc/pacman.conf
 
-    # shellcheck disable=SC2154
-    [ "${flg_DryRun}" -eq 1 ] || sudo cp /etc/pacman.conf /etc/pacman.conf.hyde.bkp
-    [ "${flg_DryRun}" -eq 1 ] || sudo sed -i "/^#Color/c\Color\nILoveCandy
-    /^#VerbosePkgLists/c\VerbosePkgLists
-    /^#ParallelDownloads/c\ParallelDownloads = 5" /etc/pacman.conf
-    [ "${flg_DryRun}" -eq 1 ] || sudo sed -i '/^#\[multilib\]/,+1 s/^#//' /etc/pacman.conf
+        print_log -g "[PACMAN] " -b "update :: " "packages..."
+        [ "${flg_DryRun}" -eq 1 ] || sudo pacman -Syyu
+        [ "${flg_DryRun}" -eq 1 ] || sudo pacman -Fy
+    else
+        print_log -sec "PACMAN" -stat "skipped" "pacman is already configured..."
+    fi
 
-    print_log -g "[PACMAN] " -b "update :: " "packages..."
-    [ "${flg_DryRun}" -eq 1 ] || sudo pacman -Syyu
-    [ "${flg_DryRun}" -eq 1 ] || sudo pacman -Fy
-else
-    print_log -sec "PACMAN" -stat "skipped" "pacman is already configured..."
+    if grep -q '\[chaotic-aur\]' /etc/pacman.conf; then
+        print_log -sec "CHAOTIC-AUR" -stat "skipped" "Chaotic AUR entry found in pacman.conf..."
+    else
+        prompt_timer 120 "Would you like to install Chaotic AUR? [y/n] | q to quit "
+        is_chaotic_aur=false
+
+        case "${PROMPT_INPUT}" in
+        y | Y)
+            is_chaotic_aur=true
+            ;;
+        n | N)
+            is_chaotic_aur=false
+            ;;
+        q | Q)
+            print_log -sec "Chaotic AUR" -crit "Quit" "Exiting..."
+            exit 1
+            ;;
+        *)
+            is_chaotic_aur=true
+            ;;
+        esac
+        if [ "${is_chaotic_aur}" == true ]; then
+            print_log -sec "Chaotic-aur" -stat "Installation" "Installing Chaotic AUR..."
+            if [[ "${flg_DryRun}" -ne 1 ]]; then
+                sudo pacman-key --init
+                sudo "${scrDir}/chaotic_aur.sh" --install
+            fi
+        else
+            print_log -sec "Chaotic-aur" -stat "Skipped" "Chaotic AUR installation skipped..."
+        fi
+    fi
 fi
 
-if grep -q '\[chaotic-aur\]' /etc/pacman.conf; then
-    print_log -sec "CHAOTIC-AUR" -stat "skipped" "Chaotic AUR entry found in pacman.conf..."
-else
-    prompt_timer 120 "Would you like to install Chaotic AUR? [y/n] | q to quit "
-    is_chaotic_aur=false
-
-    case "${PROMPT_INPUT}" in
-    y | Y)
-        is_chaotic_aur=true
-        ;;
-    n | N)
-        is_chaotic_aur=false
-        ;;
-    q | Q)
-        print_log -sec "Chaotic AUR" -crit "Quit" "Exiting..."
-        exit 1
-        ;;
-    *)
-        is_chaotic_aur=true
-        ;;
-    esac
-    if [ "${is_chaotic_aur}" == true ]; then
-        print_log -sec "Chaotic-aur" -stat "Installation" "Installing Chaotic AUR..."
-        if [[ "${flg_DryRun}" -ne 1 ]]; then
-            sudo pacman-key --init
-            sudo "${scrDir}/chaotic_aur.sh" --install
-        fi
-    else
-        print_log -sec "Chaotic-aur" -stat "Skipped" "Chaotic AUR installation skipped..."
+# fedora copr setup
+if [ "${distro_id:-}" = "fedora" ] && command -v dnf &>/dev/null; then
+    print_log -sec "FEDORA" -stat "setup" "Checking Copr repositories..."
+    if ! dnf copr list 2>/dev/null | grep -q "sdegler/hyprland"; then
+        print_log -g "[COPR] " -b "enable :: " "sdegler/hyprland"
+        [ "${flg_DryRun}" -eq 1 ] || sudo dnf copr enable -y sdegler/hyprland || true
     fi
 fi

@@ -9,7 +9,7 @@ post_command = "echo 'HyDE backed up!'"
 pacman = ["waybar\\>=0.15.0"]
 yay = ["waybar\\>=0.15.0"]
 paru = ["waybar\\>=0.15.0"]
-dnf = ["waybar\\>=0.15.0"]
+dnf = ["waybar"]
 
 [[waybar.files]]
 action = "preserve"

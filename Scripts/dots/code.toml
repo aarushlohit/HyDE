@@ -21,6 +21,7 @@ description = "Visual Studio Code configuration"
 action = "preserve"
 yay = ["visual-studio-code-bin"]
 paru = ["visual-studio-code-bin"]
+dnf = ["code"]
 
 [[vscode.files]]
 source_root = "Configs/.config/Code/User"
@@ -32,6 +33,7 @@ description = "Code Community open-source release."
 action = "preserve"
 yay = ["vscodium-bin"]
 paru = ["vscodium-bin"]
+dnf = ["codium"]
 
 [[vscodium.files]]
 source_root = "Configs/.config/VSCodium/User"

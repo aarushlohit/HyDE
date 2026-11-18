@@ -49,11 +49,11 @@
     update    = "paru -Syu"
 
 [[global.package_managers]]
-    install   = "sudo dnf install"
+    install   = "sudo dnf install -y"
     name      = "dnf"
-    query     = "dnf list installed"
-    uninstall = "sudo dnf remove"
-    update    = "sudo dnf upgrade --refresh"
+    query     = "rpm -q"
+    uninstall = "sudo dnf remove -y"
+    update    = "sudo dnf upgrade --refresh -y"
 
 [[global.package_managers]]
     install   = "sudo apt install -y"

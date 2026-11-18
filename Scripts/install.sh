@@ -197,49 +197,53 @@ EOF
 	#----------------#
 	echo ""
 
-	# Step 1: Check if any AUR helper is installed
-	if chk_list "aurhlpr" "${aurList[@]}"; then
-		# Step 2: Show detected helper and ask user to confirm
-		print_log -c "\nDetected AUR helper: "
-		print_log -sec "AUR" -stat "Found" "${aurhlpr}"
+	# Step 1: Check AUR helper if on pacman/Arch
+	if [ "${pkg_manager}" = "pacman" ]; then
+		if chk_list "aurhlpr" "${aurList[@]}"; then
+			# Step 2: Show detected helper and ask user to confirm
+			print_log -c "\nDetected AUR helper: "
+			print_log -sec "AUR" -stat "Found" "${aurhlpr}"
 
-		prompt_timer 60 "Use ${aurhlpr}? [Y/n] | q to quit "
+			prompt_timer 60 "Use ${aurhlpr}? [Y/n] | q to quit "
 
-		case "${PROMPT_INPUT}" in
-		n|N)
-			# User wants to choose a different one — fall through to menu
-			;;
-		q)
-			print_log -sec "AUR" -crit "Quit" "Exiting..."
-			exit 1
-			;;
-		*)
-			# User confirmed — use the detected helper
-			export getAur="${aurhlpr}"
-			;;
-		esac
-	fi
+			case "${PROMPT_INPUT}" in
+			n|N)
+				# User wants to choose a different one — fall through to menu
+				;;
+			q)
+				print_log -sec "AUR" -crit "Quit" "Exiting..."
+				exit 1
+				;;
+			*)
+				# User confirmed — use the detected helper
+				export getAur="${aurhlpr}"
+				;;
+			esac
+		fi
 
-	# Step 3: If no helper chosen yet, show selection menu
-	if [[ -z "${getAur:-}" ]]; then
-		print_log -c "\nAvailable AUR helpers :: "
-		for i in "${!aurList[@]}"; do
-			print_log -sec "$((i + 1))" " ${aurList[$i]} "
-		done
+		# Step 3: If no helper chosen yet, show selection menu
+		if [[ -z "${getAur:-}" ]]; then
+			print_log -c "\nAvailable AUR helpers :: "
+			for i in "${!aurList[@]}"; do
+				print_log -sec "$((i + 1))" " ${aurList[$i]} "
+			done
 
-		prompt_timer 120 "Enter option number [default: yay] | q to quit "
+			prompt_timer 120 "Enter option number [default: yay] | q to quit "
 
-		case "${PROMPT_INPUT}" in
-		[1-9]|10) export getAur="${aurList[$((PROMPT_INPUT - 1))]}" ;;
-		q)
-			print_log -sec "AUR" -crit "Quit" "Exiting..."
-			exit 1
-			;;
-		*)
-			print_log -sec "AUR" -warn "Defaulting to yay"
-			export getAur="yay"
-			;;
-		esac
+			case "${PROMPT_INPUT}" in
+			[1-9]|10) export getAur="${aurList[$((PROMPT_INPUT - 1))]}" ;;
+			q)
+				print_log -sec "AUR" -crit "Quit" "Exiting..."
+				exit 1
+				;;
+			*)
+				print_log -sec "AUR" -warn "Defaulting to yay"
+				export getAur="yay"
+				;;
+			esac
+		fi
+	else
+		print_log -sec "PKG" -stat "detected" "${distro_id^} (${pkg_manager})"
 	fi
 
 	# Only an explicit choice counts; an installed package is not an answer.
@@ -268,7 +272,9 @@ EOF
 	#------------------------------------#
 	# install AUR helper via pacman first #
 	#------------------------------------#
-	"${installDir}/install_aur.sh" "${getAur:-${aurhlpr:-yay-bin}}" 2>&1
+	if [ "${pkg_manager}" = "pacman" ]; then
+		"${installDir}/install_aur.sh" "${getAur:-${aurhlpr:-yay-bin}}" 2>&1
+	fi
 
 	deez_exe="${HOME}/.local/state/hyde/python_env/bin/deez"
 
@@ -289,20 +295,31 @@ EOF
 		]
 
 		[[global.dependency]]
-		pacman = [
 	TOML
 
-# TODO: This is arch specific; A separate install script should be written
-	if nvidia_detect; then
-		if [ "${flg_Nvidia}" -eq 1 ]; then
-			cat /usr/lib/modules/*/pkgbase 2>/dev/null | while read -r kernel; do
-				echo "\"${kernel}-headers\","
-			done >> "${core_toml}"
-			nvidia_detect --drivers | while read -r pkg; do
-				[ -n "${pkg}" ] && echo "\"${pkg}\","
-			done >> "${core_toml}"
-		else
-			print_log -warn "Nvidia" "Nvidia GPU detected but ignored..."
+	if [ "${pkg_manager}" = "dnf" ] || [ "${distro_id}" = "fedora" ]; then
+		echo "dnf = [" >> "${core_toml}"
+		if nvidia_detect; then
+			if [ "${flg_Nvidia}" -eq 1 ]; then
+				echo '"akmod-nvidia",' >> "${core_toml}"
+				echo '"kernel-devel",' >> "${core_toml}"
+			else
+				print_log -warn "Nvidia" "Nvidia GPU detected but ignored..."
+			fi
+		fi
+	else
+		echo "pacman = [" >> "${core_toml}"
+		if nvidia_detect; then
+			if [ "${flg_Nvidia}" -eq 1 ]; then
+				cat /usr/lib/modules/*/pkgbase 2>/dev/null | while read -r kernel; do
+					echo "\"${kernel}-headers\","
+				done >> "${core_toml}"
+				nvidia_detect --drivers | while read -r pkg; do
+					[ -n "${pkg}" ] && echo "\"${pkg}\","
+				done >> "${core_toml}"
+			else
+				print_log -warn "Nvidia" "Nvidia GPU detected but ignored..."
+			fi
 		fi
 	fi
 	nvidia_detect --verbose
@@ -353,15 +370,23 @@ EOF
 		]
 
 		[[global.dependency]]
-		pacman = [
 	TOML
-	if nvidia_detect && [ "${flg_Nvidia}" -eq 1 ]; then
-		cat /usr/lib/modules/*/pkgbase 2>/dev/null | while read -r kernel; do
-			echo "\"${kernel}-headers\","
-		done >> "${core_toml}"
-		nvidia_detect --drivers | while read -r pkg; do
-			[ -n "${pkg}" ] && echo "\"${pkg}\","
-		done >> "${core_toml}"
+	if [ "${pkg_manager}" = "dnf" ] || [ "${distro_id}" = "fedora" ]; then
+		echo "dnf = [" >> "${core_toml}"
+		if nvidia_detect && [ "${flg_Nvidia}" -eq 1 ]; then
+			echo '"akmod-nvidia",' >> "${core_toml}"
+			echo '"kernel-devel",' >> "${core_toml}"
+		fi
+	else
+		echo "pacman = [" >> "${core_toml}"
+		if nvidia_detect && [ "${flg_Nvidia}" -eq 1 ]; then
+			cat /usr/lib/modules/*/pkgbase 2>/dev/null | while read -r kernel; do
+				echo "\"${kernel}-headers\","
+			done >> "${core_toml}"
+			nvidia_detect --drivers | while read -r pkg; do
+				[ -n "${pkg}" ] && echo "\"${pkg}\","
+			done >> "${core_toml}"
+		fi
 	fi
 	echo "]" >> "${core_toml}"
 
@@ -378,8 +403,12 @@ EOF
 		]
 
 		[[global.dependency]]
-		pacman = [
 	TOML
+	if [ "${pkg_manager}" = "dnf" ] || [ "${distro_id}" = "fedora" ]; then
+		echo "dnf = [" >> "${extra_toml}"
+	else
+		echo "pacman = [" >> "${extra_toml}"
+	fi
 	# starship is needed for both zsh and fish prompts
 	echo "\"starship\"," >> "${extra_toml}"
 	echo "]" >> "${extra_toml}"
@@ -507,6 +536,25 @@ EOF
 
 		if [ "${deploy_failed}" -eq 0 ]; then
 			print_log -g "[DEEZ-DOTS] " -b "complete :: " "Dotfiles deployed"
+		fi
+	fi
+
+	# Ensure hyq is available if needed
+	if ! command -v hyq >/dev/null 2>&1 && [ ! -x "${HOME}/.local/bin/hyq" ]; then
+		if command -v cmake >/dev/null 2>&1 && command -v git >/dev/null 2>&1; then
+			print_log -g "[hyprquery] " -b "build :: " "Building hyq from source..."
+			build_tmp="$(mktemp -d)"
+			if git clone --depth 1 https://github.com/HyDE-Project/hyprquery.git "${build_tmp}/hyprquery" >/dev/null 2>&1 &&
+				cmake -B "${build_tmp}/hyprquery/build" -S "${build_tmp}/hyprquery" -DCMAKE_BUILD_TYPE=Release >/dev/null 2>&1 &&
+				cmake --build "${build_tmp}/hyprquery/build" -j"$(nproc 2>/dev/null || echo 1)" >/dev/null 2>&1; then
+				mkdir -p "${HOME}/.local/bin"
+				cp "${build_tmp}/hyprquery/build/bin/hyq" "${HOME}/.local/bin/hyq" 2>/dev/null || true
+				chmod +x "${HOME}/.local/bin/hyq" 2>/dev/null || true
+				print_log -g "[hyprquery] " -b "installed :: " "${HOME}/.local/bin/hyq"
+			else
+				print_log -y "[hyprquery] " -warn "skipped" "Failed to build hyq (fallback mode will be used)"
+			fi
+			rm -rf "${build_tmp}"
 		fi
 	fi
 

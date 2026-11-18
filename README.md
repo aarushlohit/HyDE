@@ -68,28 +68,37 @@ Check this out for the full note:
 
 ---
 
-The installation script is designed for a minimal [Arch Linux](https://wiki.archlinux.org/title/Arch_Linux) install, but **may** work on some [Arch-based distros](https://wiki.archlinux.org/title/Arch-based_distributions).
+The installation script supports **Arch Linux** (and Arch-based distros) and **Fedora Linux**.
 While installing HyDE alongside another [DE](https://wiki.archlinux.org/title/Desktop_environment)/[WM](https://wiki.archlinux.org/title/Window_manager) should work, due to it being a heavily customized setup, it **will** conflict with your [GTK](https://wiki.archlinux.org/title/GTK)/[Qt](https://wiki.archlinux.org/title/Qt) theming, [Shell](https://wiki.archlinux.org/title/Command-line_shell), [SDDM](https://wiki.archlinux.org/title/SDDM), [GRUB](https://wiki.archlinux.org/title/GRUB), etc. and is at your own risk.
 
 For NixOS support there is a separate project being maintained @ [Hydenix](https://github.com/richen604/hydenix/tree/main)
 
 > [!IMPORTANT]
-> The install script will auto-detect an NVIDIA card and install a matching DKMS driver path for your kernel.
+> The install script will auto-detect an NVIDIA card and install the matching drivers (`akmod-nvidia` on Fedora, DKMS drivers on Arch).
 > Newer cards may use `nvidia-dkms` / `nvidia-open-dkms`, while legacy cards should be checked first against [`Scripts/nvidia-db/`](./Scripts/nvidia-db/).
-> Please ensure that your NVIDIA card supports the DKMS driver family selected for it in the list provided [here](https://wiki.archlinux.org/title/NVIDIA).
+> Please ensure that your NVIDIA card supports the driver family selected for it.
 >
-> If a DKMS package is selected, expect a local module build for the current kernel during installation. This can take several minutes and may happen even when an NVIDIA DKMS package was already installed, because DKMS rebuilds modules for the active kernel.
+> Expect a local module build for the current kernel during installation. This can take several minutes.
 
 > [!CAUTION]
 > The script modifies your `grub` or `systemd-boot` config to enable NVIDIA DRM.
 
 > [!TIP]
-> BigLinux / Manjaro users may want to take a snapshot with Timeshift before running the installer, especially when HyDE is being installed alongside an existing desktop environment. On older NVIDIA cards, review the legacy driver list in [`Scripts/nvidia-db/`](./Scripts/nvidia-db/) before continuing.
+> Users may want to take a snapshot with Timeshift or Btrfs before running the installer, especially when HyDE is being installed alongside an existing desktop environment. On older NVIDIA cards, review the legacy driver list in [`Scripts/nvidia-db/`](./Scripts/nvidia-db/) before continuing.
 
 To install, execute the following commands:
 
+**Arch Linux:**
 ```shell
 sudo pacman -S --needed git base-devel
+git clone --depth 1 https://github.com/HyDE-Project/HyDE ~/HyDE
+cd ~/HyDE/Scripts
+./install.sh
+```
+
+**Fedora Linux:**
+```shell
+sudo dnf install -y git
 git clone --depth 1 https://github.com/HyDE-Project/HyDE ~/HyDE
 cd ~/HyDE/Scripts
 ./install.sh

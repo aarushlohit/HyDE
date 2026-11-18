@@ -14,7 +14,13 @@ if [ $? -ne 0 ]; then
 fi
 
 if ! pkg_installed flatpak; then
-    sudo pacman -S flatpak
+    if [ -x "${pacmanCmd}" ]; then
+        "${pacmanCmd}" install flatpak
+    elif command -v dnf &>/dev/null; then
+        sudo dnf install -y flatpak
+    elif command -v pacman &>/dev/null; then
+        sudo pacman -S flatpak
+    fi
 fi
 
 flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
